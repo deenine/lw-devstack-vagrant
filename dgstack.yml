@@ -1,0 +1,46 @@
+---
+- hosts: all
+  vars:
+    stack_user: "stack"
+    stack_home: /home/{{ stack_user }}
+    #password: StackPassword
+    stack_password: "iPxoMYWOri3eg"
+    devstack_dir: "{{ stack_home }}/devstack"
+  sudo: yes
+  pre_tasks:
+    - name: Apt-get Update
+      apt: update_cache=yes
+
+    - name: Install Prerequisites
+      apt: name=git
+  tasks:
+   - name: Create Stack User
+     user: name={{ stack_user }}
+           password={{ stack_password }}
+           comment="Devstack User"
+           createhome=yes
+           home={{ stack_home }}
+
+   - name: Enable passwordless sudo for stack user
+     copy: content="%{{ stack_user }} ALL=(ALL) NOPASSWD:ALL"
+           dest=/etc/sudoers.d/{{ stack_user }}
+           owner=root
+           group=root
+           mode=0440
+
+   - name: Clone devstack repo
+     sudo_user: stack
+     git: repo=https://git.openstack.org/openstack-dev/devstack
+          dest={{ devstack_dir }}
+
+
+   - name: Copy local.conf for devstack
+     sudo_user: stack
+     copy: src=local.conf
+           dest="{{ devstack_dir }}/local.conf"
+
+   - name: Start devstack
+     sudo_user: stack
+     shell: ./stack.sh
+     args:
+            chdir: "{{ devstack_dir }}"
